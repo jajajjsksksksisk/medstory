@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MedStory" />
+  <meta name="theme-color" content="#0d9488" />
+  <title>MedStory</title>
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    :root {
+      --teal: #0d9488;
+      --teal-dark: #0f766e;
+      --bg: #f0fdfa;
+      --card: #ffffff;
+      --text: #134e4a;
+      --muted: #5eead4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+    header {
+      background: var(--teal);
+      color: white;
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; }
+    header p { font-size: 0.8rem; opacity: 0.9; margin-top: 2px; }
+    main { padding: 16px; max-width: 640px; margin: 0 auto; }
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .card h2 { font-size: 1rem; margin-bottom: 4px; }
+    .card p { font-size: 0.85rem; color: #64748b; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .btn-primary { background: var(--teal); color: white; }
+    .btn-secondary { background: #ccfbf1; color: var(--teal-dark); }
+    .btn-danger { background: #fecaca; color: #991b1b; }
+    .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-row .btn { flex: 1; padding: 12px 8px; font-size: 0.9rem; }
+    textarea, input, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #99f6e4;
+      border-radius: 12px;
+      font-size: 1rem;
+      margin-top: 8px;
+      font-family: inherit;
+    }
+    textarea { min-height: 160px; resize: vertical; }
+    label { font-size: 0.85rem; font-weight: 600; display: block; margin-top: 12px; }
+    .hidden { display: none !important; }
+    .stats {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .stat {
+      flex: 1;
+      background: white;
+      border-radius: 12px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+    .stat .n { font-size: 1.4rem; font-weight: 700; color: var(--teal); }
+    .stat .l { font-size: 0.7rem; color: #64748b; }
+    .nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      padding: 8px 0 env(safe-area-inset-bottom);
+    }
+    .nav button {
+      flex: 1;
+      background: none;
+      border: none;
+      padding: 8px;
+      font-size: 0.7rem;
+      color: #64748b;
+    }
+    .nav button.active { color: var(--teal); font-weight: 600; }
+    .nav button span { display: block; font-size: 1.2rem; }
+    .flashcard-box {
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 24px;
+    }
+    .badge {
+      display: inline-block;
+      background: #ccfbf1;
+      color: var(--teal-dark);
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+    }
+    .story-text { white-space: pre-wrap; line-height: 1.5; font-size: 0.95rem; }
+    .empty { text-align: center; padding: 40px 20px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MedStory</h1>
+    <p>Study smarter for medical school</p>
+  </header>
+
+  <main>
+    <!-- HOME -->
+    <section id="page-home">
+      <div class="stats">
+        <div class="stat"><div class="n" id="stat-due">0</div><div class="l">Due</div></div>
+        <div class="stat"><div class="n" id="stat-cards">0</div><div class="l">Cards</div></div>
+        <div class="stat"><div class="n" id="stat-notes">0</div><div class="l">Notes</div></div>
+      </div>
+
+      <div class="card" onclick="showPage('upload')" style="cursor:pointer">
+        <h2>Upload / Paste Notes</h2>
+        <p>Get summary, flashcards, stories & last-day notes</p>
+      </div>
+      <div class="card" onclick="showPage('review')" style="cursor:pointer">
+        <h2>Review Flashcards</h2>
+        <p>Spaced repetition – remember longer</p>
+      </div>
+      <div class="card" onclick="showPage('lastday')" style="cursor:pointer">
+        <h2>Last Day Revision</h2>
+        <p>Ultra-short high-yield notes before exams</p>
+      </div>
+      <div class="card" onclick="showPage('stories')" style="cursor:pointer">
+        <h2>Story Mnemonics</h2>
+        <p>Memorable stories for hard concepts</p>
+      </div>
+      <div class="card" onclick="showPage('cards')" style="cursor:pointer">
+        <h2>All Flashcards</h2>
+        <p>Browse by subject</p>
+      </div>
+    </section>
+
+    <!-- UPLOAD -->
+    <section id="page-upload" class="hidden">
+      <div class="card">
+        <h2>Paste your notes</h2>
+        <label>Subject</label>
+        <select id="subject">
+          <option>Anatomy</option><option>Physiology</option><option>Biochemistry</option>
+          <option>Pathology</option><option>Pharmacology</option><option>Microbiology</option>
+          <option>Medicine</option><option>Surgery</option><option>Pediatrics</option>
+          <option>Obstetrics & Gynaecology</option><option>Other</option>
+        </select>
+        <label>Topic (optional)</label>
+        <input id="topic" placeholder="e.g. Cranial nerves" />
+        <label>Notes</label>
+        <textarea id="notes" placeholder="Paste lecture notes or high-yield points here..."></textarea>
+        <button class="btn btn-primary" id="btn-generate" onclick="generateFromNotes()">Generate Summary + Cards</button>
+        <p style="margin-top:10px;font-size:0.8rem;color:#64748b">
+          Works offline. Creates summary, flashcards, a simple story, and last-day notes from your text.
+        </p>
+      </div>
+    </section>
+
+    <!-- REVIEW -->
+    <section id="page-review" class="hidden">
+      <div class="card">
+        <div id="review-empty" class="empty hidden">No cards due. Upload notes first or check back later.</div>
+        <div id="review-box" class="hidden">
+          <span class="badge" id="review-subject"></span>
+          <div class="flashcard-box">
+            <div id="review-front" style="font-size:1.1rem;font-weight:600"></div>
+            <div id="review-back" class="hidden" style="margin-top:20px;color:#0f766e"></div>
+          </div>
+          <button class="btn btn-secondary" id="btn-show" onclick="showAnswer()">Show Answer</button>
+          <div class="btn-row hidden" id="rating-row">
+            <button class="btn btn-danger" onclick="rate(1)">Again</button>
+            <button class="btn" style="background:#fed7aa;color:#9a3412" onclick="rate(2)">Hard</button>
+            <button class="btn" style="background:#bbf7d0;color:#166534" onclick="rate(3)">Good</button>
+            <button class="btn" style="background:#bfdbfe;color:#1e40af" onclick="rate(4)">Easy</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LAST DAY -->
+    <section id="page-lastday" class="hidden">
+      <div id="lastday-list"></div>
+    </section>
+
+    <!-- STORIES -->
+    <section id="page-stories" class="hidden">
+      <div id="stories-list"></div>
+    </section>
+
+    <!-- ALL CARDS -->
+    <section id="page-cards" class="hidden">
+      <div id="cards-list"></div>
+    </section>
+  </main>
+
+  <nav class="nav">
+    <button class="active" onclick="showPage('home')"><span>🏠</span>Home</button>
+    <button onclick="showPage('upload')"><span>📝</span>Upload</button>
+    <button onclick="showPage('review')"><span>🔁</span>Review</button>
+    <button onclick="showPage('lastday')"><span>⚡</span>Last Day</button>
+    <button onclick="showPage('stories')"><span>📖</span>Stories</button>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+</html>

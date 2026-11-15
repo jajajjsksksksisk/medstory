@@ -1,0 +1,10 @@
+{
+  "name": "MedStory",
+  "short_name": "MedStory",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d9488",
+  "theme_color": "#0d9488",
+  "description": "Study app for medical students",
+  "icons": []
+}
