@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:fsrs/fsrs.dart';
+import 'package:fsrs/fsrs.dart' as fsrs;
 
-/// Simple demo of FSRS review flow.
-/// In the real app this will load due cards from storage.
+import '../../core/services/fsrs_service.dart';
+import '../../core/services/storage_service.dart';
+import '../../shared/models/flashcard_model.dart';
+
 class ReviewScreen extends StatefulWidget {
   const ReviewScreen({super.key});
 
@@ -11,64 +13,35 @@ class ReviewScreen extends StatefulWidget {
 }
 
 class _ReviewScreenState extends State<ReviewScreen> {
-  late final Scheduler _scheduler;
-  Card? _currentCard;
+  late List<FlashcardModel> _queue;
+  int _index = 0;
   bool _showAnswer = false;
-  int _reviewedCount = 0;
-
-  // Demo content
-  final List<Map<String, String>> _demoCards = [
-    {
-      'front': 'What is the most common cause of community-acquired pneumonia?',
-      'back': 'Streptococcus pneumoniae',
-    },
-    {
-      'front': 'First-line treatment for uncomplicated UTI in non-pregnant women?',
-      'back': 'Nitrofurantoin or Trimethoprim-sulfamethoxazole (depending on local resistance)',
-    },
-    {
-      'front': 'Cranial nerve responsible for taste on the anterior 2/3 of the tongue?',
-      'back': 'Facial nerve (CN VII) via chorda tympani',
-    },
-  ];
-
-  int _currentIndex = 0;
+  int _reviewed = 0;
 
   @override
   void initState() {
     super.initState();
-    _scheduler = Scheduler();
-    _loadNextCard();
+    _queue = StorageService.getDueCards();
+    // If nothing due, show a few recent cards so user can still practice
+    if (_queue.isEmpty) {
+      _queue = StorageService.getAllCards().take(10).toList();
+    }
   }
 
-  void _loadNextCard() {
-    if (_currentIndex >= _demoCards.length) {
-      setState(() {
-        _currentCard = null;
-      });
-      return;
-    }
+  FlashcardModel? get _current =>
+      _index < _queue.length ? _queue[_index] : null;
 
-    // Create a new FSRS card for demo
-    final card = Card(cardId: _currentIndex + 1);
+  Future<void> _rate(fsrs.Rating rating) async {
+    final card = _current;
+    if (card == null) return;
+
+    await FsrsService.review(card, rating);
+
     setState(() {
-      _currentCard = card;
+      _reviewed++;
+      _index++;
       _showAnswer = false;
     });
-  }
-
-  void _rate(Rating rating) {
-    if (_currentCard == null) return;
-
-    final result = _scheduler.reviewCard(_currentCard!, rating);
-    // result.card now has updated stability, difficulty, due date etc.
-
-    setState(() {
-      _reviewedCount++;
-      _currentIndex++;
-    });
-
-    _loadNextCard();
   }
 
   @override
@@ -80,30 +53,25 @@ class _ReviewScreenState extends State<ReviewScreen> {
           Center(
             child: Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: Text('$_reviewedCount reviewed'),
+              child: Text('$_reviewed / ${_queue.length}'),
             ),
           ),
         ],
       ),
-      body: _currentCard == null
-          ? _buildEmptyState()
-          : _buildCardView(),
+      body: _current == null ? _empty() : _cardView(),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _empty() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.check_circle_outline, size: 64, color: Colors.green),
           const SizedBox(height: 16),
-          Text(
-            'All caught up!',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
+          Text('All caught up!', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
-          const Text('No more cards due right now.'),
+          const Text('No cards due right now.'),
           const SizedBox(height: 24),
           FilledButton(
             onPressed: () => Navigator.pop(context),
@@ -114,14 +82,22 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 
-  Widget _buildCardView() {
-    final front = _demoCards[_currentIndex]['front']!;
-    final back = _demoCards[_currentIndex]['back']!;
+  Widget _cardView() {
+    final card = _current!;
 
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
+          // Subject tag
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Chip(
+              label: Text(card.subject),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+          const SizedBox(height: 8),
           Expanded(
             child: Card(
               child: Container(
@@ -138,12 +114,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      front,
+                      card.front,
                       style: Theme.of(context).textTheme.titleLarge,
                       textAlign: TextAlign.center,
                     ),
                     if (_showAnswer) ...[
-                      const Divider(height: 48),
+                      const Divider(height: 40),
                       Text(
                         'Answer',
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -152,7 +128,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        back,
+                        card.back,
                         style: Theme.of(context).textTheme.titleMedium,
                         textAlign: TextAlign.center,
                       ),
@@ -162,78 +138,41 @@ class _ReviewScreenState extends State<ReviewScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           if (!_showAnswer)
             FilledButton(
               onPressed: () => setState(() => _showAnswer = true),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
-              ),
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
               child: const Text('Show Answer'),
             )
           else
             Row(
               children: [
-                Expanded(
-                  child: _RatingButton(
-                    label: 'Again',
-                    color: Colors.red.shade400,
-                    onPressed: () => _rate(Rating.again),
-                  ),
-                ),
+                _btn('Again', Colors.red.shade400, () => _rate(fsrs.Rating.again)),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: _RatingButton(
-                    label: 'Hard',
-                    color: Colors.orange.shade400,
-                    onPressed: () => _rate(Rating.hard),
-                  ),
-                ),
+                _btn('Hard', Colors.orange.shade400, () => _rate(fsrs.Rating.hard)),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: _RatingButton(
-                    label: 'Good',
-                    color: Colors.green.shade500,
-                    onPressed: () => _rate(Rating.good),
-                  ),
-                ),
+                _btn('Good', Colors.green.shade500, () => _rate(fsrs.Rating.good)),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: _RatingButton(
-                    label: 'Easy',
-                    color: Colors.blue.shade400,
-                    onPressed: () => _rate(Rating.easy),
-                  ),
-                ),
+                _btn('Easy', Colors.blue.shade400, () => _rate(fsrs.Rating.easy)),
               ],
             ),
         ],
       ),
     );
   }
-}
 
-class _RatingButton extends StatelessWidget {
-  final String label;
-  final Color color;
-  final VoidCallback onPressed;
-
-  const _RatingButton({
-    required this.label,
-    required this.color,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 14),
+  Widget _btn(String label, Color color, VoidCallback onPressed) {
+    return Expanded(
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
       ),
-      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
     );
   }
 }

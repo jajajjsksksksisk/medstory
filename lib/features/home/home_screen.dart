@@ -1,12 +1,41 @@
 import 'package:flutter/material.dart';
 
+import '../../core/services/storage_service.dart';
 import '../flashcards/flashcards_screen.dart';
+import '../last_day/last_day_screen.dart';
 import '../review/review_screen.dart';
 import '../stories/stories_screen.dart';
+import '../subjects/subjects_screen.dart';
 import '../upload/upload_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int dueCount = 0;
+  int totalCards = 0;
+  int notesCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshStats();
+  }
+
+  void _refreshStats() {
+    final due = StorageService.getDueCards().length;
+    final all = StorageService.getAllCards().length;
+    final notes = StorageService.getAllNotes().length;
+    setState(() {
+      dueCount = due;
+      totalCards = all;
+      notesCount = notes;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,10 +46,9 @@ class HomeScreen extends StatelessWidget {
         title: const Text('MedStory'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              // TODO: Settings
-            },
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshStats,
+            tooltip: 'Refresh stats',
           ),
         ],
       ),
@@ -28,7 +56,6 @@ class HomeScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            // Welcome header
             Text(
               'Study smarter,\nremember longer',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -38,37 +65,54 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Turn notes into summaries, flashcards & stories',
+              'Summaries • Flashcards (FSRS) • Stories • Last-day notes',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
 
-            // Quick actions
+            // Stats
+            Row(
+              children: [
+                Expanded(child: _StatCard(label: 'Due today', value: '$dueCount', icon: Icons.schedule)),
+                const SizedBox(width: 10),
+                Expanded(child: _StatCard(label: 'Total cards', value: '$totalCards', icon: Icons.style)),
+                const SizedBox(width: 10),
+                Expanded(child: _StatCard(label: 'Notes', value: '$notesCount', icon: Icons.notes)),
+              ],
+            ),
+            const SizedBox(height: 28),
+
             _ActionCard(
               icon: Icons.upload_file_rounded,
-              title: 'Upload Notes / PDF',
-              subtitle: 'Get AI summary + flashcards',
+              title: 'Upload / Paste Notes',
+              subtitle: 'AI summary + flashcards + stories + last-day notes',
               color: colorScheme.primaryContainer,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const UploadScreen()),
-                );
+              onTap: () async {
+                await Navigator.push(context, MaterialPageRoute(builder: (_) => const UploadScreen()));
+                _refreshStats();
               },
             ),
             const SizedBox(height: 12),
             _ActionCard(
               icon: Icons.style_rounded,
               title: 'Review Flashcards',
-              subtitle: 'FSRS spaced repetition',
+              subtitle: dueCount > 0 ? '$dueCount cards waiting' : 'FSRS spaced repetition',
               color: colorScheme.secondaryContainer,
+              onTap: () async {
+                await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewScreen()));
+                _refreshStats();
+              },
+            ),
+            const SizedBox(height: 12),
+            _ActionCard(
+              icon: Icons.flash_on_rounded,
+              title: 'Last Day Revision',
+              subtitle: 'Ultra-short high-yield notes for final day',
+              color: colorScheme.tertiaryContainer,
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ReviewScreen()),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const LastDayScreen()));
               },
             ),
             const SizedBox(height: 12),
@@ -76,64 +120,30 @@ class HomeScreen extends StatelessWidget {
               icon: Icons.auto_stories_rounded,
               title: 'Story Mnemonics',
               subtitle: 'Memorable narratives for hard concepts',
-              color: colorScheme.tertiaryContainer,
+              color: colorScheme.surfaceContainerHighest,
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const StoriesScreen()),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const StoriesScreen()));
+              },
+            ),
+            const SizedBox(height: 12),
+            _ActionCard(
+              icon: Icons.folder_special_rounded,
+              title: 'Subjects',
+              subtitle: 'Browse by Anatomy, Pharma, Patho…',
+              color: colorScheme.surfaceContainerHighest,
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SubjectsScreen()));
               },
             ),
             const SizedBox(height: 12),
             _ActionCard(
               icon: Icons.library_books_rounded,
-              title: 'My Flashcards',
-              subtitle: 'Browse all cards by subject',
+              title: 'All Flashcards',
+              subtitle: 'Browse and search your cards',
               color: colorScheme.surfaceContainerHighest,
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const FlashcardsScreen()),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const FlashcardsScreen()));
               },
-            ),
-
-            const SizedBox(height: 40),
-
-            // Stats placeholder
-            Text(
-              'Today\'s progress',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    label: 'Due',
-                    value: '0',
-                    icon: Icons.schedule,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatCard(
-                    label: 'Reviewed',
-                    value: '0',
-                    icon: Icons.check_circle_outline,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatCard(
-                    label: 'New',
-                    value: '0',
-                    icon: Icons.add_circle_outline,
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -165,26 +175,18 @@ class _ActionCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(18),
           child: Row(
             children: [
-              Icon(icon, size: 32),
-              const SizedBox(width: 16),
+              Icon(icon, size: 30),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
+                    Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                    Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
                   ],
                 ),
               ),
@@ -202,31 +204,19 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
 
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
+  const _StatCard({required this.label, required this.value, required this.icon});
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         child: Column(
           children: [
-            Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 6),
+            Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+            Text(label, style: Theme.of(context).textTheme.bodySmall, textAlign: TextAlign.center),
           ],
         ),
       ),
