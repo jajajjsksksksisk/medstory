@@ -14,7 +14,7 @@ class MedStoryApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0D9488), // Teal - calm medical feel
+          seedColor: const Color(0xFF0D9488),
           brightness: Brightness.light,
         ),
         textTheme: GoogleFonts.interTextTheme(),
